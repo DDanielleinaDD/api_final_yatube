@@ -19,6 +19,7 @@ class PostViewSet(viewsets.ModelViewSet):
     pagination_class = LimitOffsetPagination
 
     def perform_create(self, serializer):
+        '''Определенный пользователь создает пост'''
         serializer.save(author=self.request.user)
 
 
@@ -33,15 +34,19 @@ class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = (IsOwnerOrReadOnly, IsAuthenticatedOrReadOnly)
 
+    def get_post(self):
+        '''Получаем пост.'''
+        post = get_object_or_404(Post, id=self.kwargs.get('post_id'))
+        return post
+
     def get_queryset(self):
-        post_id = self.kwargs.get('post_id')
-        post = get_object_or_404(Post, id=post_id)
-        new_queryset = post.comments.all()
+        '''Получаем все комменты под постом'''
+        new_queryset = self.get_post().comments.all()
         return new_queryset
 
     def perform_create(self, serializer):
-        post = get_object_or_404(Post, id=self.kwargs.get('post_id'))
-        serializer.save(author=self.request.user, post=post)
+        '''Создаем коммент под постом'''
+        serializer.save(author=self.request.user, post=self.get_post())
 
 
 class FollowViewSet(mixins.CreateModelMixin,
@@ -53,9 +58,11 @@ class FollowViewSet(mixins.CreateModelMixin,
     search_fields = ('following__username',)
 
     def get_queryset(self):
+        '''Получаем список, на кого подписан пользователь'''
         user = get_object_or_404(User, username=self.request.user)
         following = user.follower.all()
         return following
 
     def perform_create(self, serializer):
+        '''Создаем подписку на другого автора'''
         serializer.save(user=self.request.user)
